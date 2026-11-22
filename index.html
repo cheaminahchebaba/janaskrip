@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bengkel Bina Video dengan Claude</title>
+<meta name="description" content="Bengkel membina video pembelajaran dengan Claude untuk pensyarah IAB.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305070f'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='%2322d3ee'/%3E%3C/svg%3E">
+<script>
+/* Lapisan keserasian: jika halaman TIDAK dibuka dalam platform Claude, fungsi pangkalan data,
+   pengguna dan muat turun berjalan secara tempatan (localStorage / Blob) pada peranti ini sahaja.
+   Studio Claude dimatikan kerana ia memerlukan perkhidmatan model di belakang tabir. */
+(function(){
+  if(typeof window.claude!=="undefined")return;
+  window.__LOCAL=true;
+  const ls={get:k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+  let uid=ls.get("bv-uid");if(!uid){uid="u"+Math.random().toString(36).slice(2,10)+Date.now().toString(36);ls.set("bv-uid",uid)}
+  const subs={},read=n=>ls.get("bv-db-"+n)||{};
+  const snap=(n,lim)=>{const o=read(n),docs=Object.keys(o).slice(0,lim||500).map(id=>({id,exists:true,data:()=>o[id]}));return {docs,size:docs.length,empty:!docs.length}};
+  const fire=n=>(subs[n]||[]).forEach(f=>{try{f.next(snap(n,f.lim))}catch(e){}});
+  const col=n=>({limit(l){return {onSnapshot(next){const f={next,lim:l};(subs[n]=subs[n]||[]).push(f);setTimeout(()=>next(snap(n,l)),0);return ()=>{subs[n]=subs[n].filter(x=>x!==f)}}}},doc(id){return {async set(v){const o=read(n);o[id]=v;ls.set("bv-db-"+n,o);fire(n)}}}});
+  const mods={
+    db:{collection:col},
+    user:{id:async()=>uid,canEdit:async()=>true},
+    downloads:{async save({filename,data}){const b=new Blob([data],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);return {status:"saved"}}},
+    sample:null
+  };
+  window.claude={use:async n=>mods[n]||null};
+  document.addEventListener("DOMContentLoaded",()=>{const n=document.getElementById("modeNote");if(n)n.style.display="block"});
+})();
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Space+Grotesk:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#05070f;--bg2:#0b1022;--card:rgba(255,255,255,.055);--bd:rgba(120,200,255,.2);--tx:#e8f0ff;--mut:#93a6c9;--a:#22d3ee;--b:#a78bfa;--c:#f472b6;--ok:#34d399;--nav:rgba(5,7,15,.82);--grid:rgba(120,200,255,.06);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f2f6ff;--bg2:#e4ebff;--card:rgba(255,255,255,.85);--bd:rgba(40,80,160,.22);--tx:#0b1630;--mut:#4a5b80;--a:#0891b2;--b:#7c3aed;--c:#db2777;--ok:#059669;--nav:rgba(242,246,255,.85);--grid:rgba(40,80,160,.07)}}
+:root[data-theme="light"]{--bg:#f2f6ff;--bg2:#e4ebff;--card:rgba(255,255,255,.85);--bd:rgba(40,80,160,.22);--tx:#0b1630;--mut:#4a5b80;--a:#0891b2;--b:#7c3aed;--c:#db2777;--ok:#059669;--nav:rgba(242,246,255,.85);--grid:rgba(40,80,160,.07)}
+html{scroll-behavior:smooth;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 "Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--nav)}
+.orb{position:fixed;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.28;z-index:-1;animation:fl 16s ease-in-out infinite alternate}
+.o1{background:var(--a);top:-120px;left:-120px}.o2{background:var(--b);bottom:-140px;right:-100px;animation-delay:-8s}
+@keyframes fl{to{transform:translate(60px,40px) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.orb{animation:none}html{scroll-behavior:auto}}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:10px;background:var(--nav);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd)}
+nav a{color:var(--mut);text-decoration:none;font-size:13px;padding:6px 12px;border-radius:99px;border:1px solid transparent}
+nav a:hover{color:var(--tx);border-color:var(--bd)}
+main{max-width:980px;margin:0 auto;padding:0 18px 60px}
+.hero{padding:64px 0 36px;text-align:center}
+.tag{display:inline-block;font:600 12px "Orbitron",sans-serif;letter-spacing:.22em;color:var(--a);border:1px solid var(--bd);padding:6px 14px;border-radius:99px;background:var(--card)}
+h1{font:800 clamp(30px,6vw,56px)/1.1 "Orbitron",sans-serif;margin:18px 0 12px;background:linear-gradient(100deg,var(--a),var(--b) 55%,var(--c));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--mut);max-width:620px;margin:0 auto 24px}
+.stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.stat{min-width:120px;padding:12px 18px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
+.stat b{display:block;font:800 26px "Orbitron",sans-serif;color:var(--a)}.stat span{font-size:12px;color:var(--mut)}
+section{margin-top:56px}
+h2{font:700 clamp(20px,3.4vw,28px) "Orbitron",sans-serif;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 20px}
+.card{border:1px solid var(--bd);background:var(--card);border-radius:16px;backdrop-filter:blur(10px)}
+.bar{height:8px;border-radius:99px;background:var(--bd);overflow:hidden;margin:0 0 16px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--b));transition:width .4s}
+.slot{margin-bottom:10px;overflow:hidden}
+.sh{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left}
+.time{font:600 13px "Orbitron",sans-serif;color:var(--a);min-width:104px}
+.st{flex:1;font-weight:500}
+.pill{font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid var(--bd);color:var(--mut)}
+.chk{width:22px;height:22px;accent-color:var(--ok);cursor:pointer}
+.sb{display:none;padding:0 16px 16px 132px;color:var(--mut)}
+.slot.open .sb{display:block}.slot.done{border-color:var(--ok)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.step{padding:18px}.step em{font:800 28px "Orbitron",sans-serif;font-style:normal;color:var(--b)}
+.step h3{margin:6px 0;font-size:16px}.step small{color:var(--mut)}
+.who{display:inline-block;margin-top:8px;font-size:11px;padding:2px 10px;border-radius:99px;background:linear-gradient(90deg,var(--a),var(--b));color:#05070f;font-weight:700}
+.studio{padding:20px;display:grid;gap:12px}
+label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+input,textarea,select{font:inherit;color:var(--tx);background:rgba(127,150,200,.12);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.row{grid-template-columns:1fr}.sb{padding-left:16px}.time{min-width:84px;font-size:12px}}
+.btn{font:700 14px "Space Grotesk",sans-serif;border:0;border-radius:12px;padding:11px 18px;cursor:pointer;color:#05070f;background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 0 22px rgba(34,211,238,.28)}
+.btn.g{background:none;color:var(--tx);border:1px solid var(--bd);box-shadow:none}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.out{white-space:pre-wrap;padding:14px;border-radius:12px;border:1px dashed var(--bd);min-height:56px;color:var(--tx);font-size:15px}
+.out:empty::before{content:attr(data-ph);color:var(--mut)}
+details{margin-top:10px;padding:12px 16px}summary{cursor:pointer;font-weight:700;color:var(--a)}
+pre{white-space:pre-wrap;margin:10px 0;color:var(--mut);font:13px/1.6 ui-monospace,Menlo,Consolas,monospace}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:16px}
+.g1{padding:16px}.g1 h4{margin:0 0 2px;color:var(--c);font-size:15px}.g1 small{color:var(--mut)}
+.g1 p{margin:8px 0 0;font-size:14px}.g1 .hk{color:var(--a)}
+.qc{display:grid;gap:8px}.qi{display:flex;gap:12px;align-items:flex-start;padding:12px 16px}.qi b{display:block}.qi span{color:var(--mut);font-size:14px}
+.score{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.ring{--p:0;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--ok) calc(var(--p)*1%),var(--bd) 0);font:800 18px "Orbitron",sans-serif}
+.ring span{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--bg2)}
+.note{color:var(--mut);font-size:13px}
+#adm{display:none}body.adm #app,body.adm nav{display:none}body.adm #adm{display:block}
+nav a.fas{border-color:var(--a);color:var(--a);font-weight:700}
+.lnk{display:inline-block;margin-top:10px;color:var(--a);font-weight:700}
+.seg{display:flex;gap:8px;margin-bottom:12px}.seg button{font:700 14px "Space Grotesk",sans-serif;padding:9px 20px;border-radius:99px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}.seg button.on{background:linear-gradient(90deg,var(--a),var(--b));color:#05070f;border-color:transparent}
+ol.gl{margin:0;padding-left:20px;display:grid;gap:10px;color:var(--tx)}
+footer a{color:var(--mut)}
+.tw{overflow-x:auto;margin-top:12px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}th{color:var(--a);white-space:nowrap}td.w{min-width:220px}
+footer{margin-top:60px;text-align:center;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="orb o1"></div><div class="orb o2"></div>
+<nav><a href="#jadual">Jadual</a><a href="#aliran">Aliran</a><a href="#studio">Studio Claude</a><a href="#rekod">Rekod</a><a href="#sunting">Sunting</a><a href="#galeri">Galeri</a><a href="#semakan">Semakan</a><a href="#fasilitator" class="fas">Fasilitator</a></nav>
+<main id="app">
+<header class="hero">
+<span class="tag">BENGKEL · IAB · 8.00 PG – 12.00 TGH</span>
+<h1>Bina Video Pembelajaran dengan Claude</h1>
+<p>Daripada idea kepada video menegak 45–60 saat dalam satu pagi. Claude menulis skrip, papan cerita dan kapsyen; anda merakam dan menyunting.</p>
+<div class="stats"><div class="stat"><b>4 jam</b><span>hands-on</span></div><div class="stat"><b>5</b><span>langkah kerja</span></div><div class="stat"><b>1</b><span>video siap</span></div></div>
+</header>
+<div class="card" id="modeNote" style="display:none;padding:12px 16px;margin-top:8px"><span class="note">Mod tempatan: halaman ini tidak disambungkan ke pangkalan data bersama atau Claude. Galeri dan rekod hanya disimpan pada peranti ini, dan Studio Claude menyalin arahan untuk anda tampal ke claude.ai.</span></div>
+
+<section id="jadual">
+<h2>Jadual bengkel</h2>
+<p class="sub">Klik slot untuk butiran. Tanda yang sudah selesai; kemajuan disimpan pada peranti ini.</p>
+<div class="bar"><i id="pbar"></i></div>
+<div id="slots"></div>
+</section>
+
+<section id="aliran">
+<h2>Aliran kerja lima langkah</h2>
+<p class="sub">Claude tidak menjana fail video terus. Ia menyediakan bahan, dan anda menggabungkannya dalam CapCut atau Canva.</p>
+<div class="steps" id="steps"></div>
+</section>
+
+<section id="studio">
+<h2>Studio Claude</h2>
+<p class="sub">Jana skrip anda, kemudian guna Arahan 2 dan 3 yang sudah diselaraskan dengan skrip itu.</p>
+<div class="card studio">
+<div class="row">
+<label>Sasaran penonton<input id="sasaran" placeholder="cth. pemimpin sekolah baharu"></label>
+<label>Topik<input id="topik" placeholder="cth. memberi maklum balas pengajaran"></label>
+</div>
+<div class="acts"><button class="btn" id="gen">Jana skrip 50 saat</button><span class="note" id="gst"></span></div>
+<div id="manual" style="display:none;gap:12px"><label>Tampal skrip yang dijana oleh Claude<textarea id="paste" rows="5" placeholder="Tampal skrip di sini, kemudian tekan Guna skrip ini."></textarea></label><div class="acts"><button class="btn g" id="usepaste" type="button">Guna skrip ini</button></div></div>
+<p class="note">Skrip yang dijana dimasukkan ke dalam Arahan 1 di bawah. Output Claude ialah draf; semak fakta dan bahasa sebelum merakam.</p>
+</div>
+<div id="prompts"></div>
+</section>
+
+<section id="rekod">
+<h2>Rekod peserta</h2>
+<p class="sub" id="rsub">Hantar skrip akhir dan cadangan topik video anda kepada fasilitator. Hanya fasilitator boleh melihat rekod ini.</p>
+<div class="card studio" id="rform">
+<label>Nama<input id="rname" maxlength="40"></label>
+<label>Skrip akhir<textarea id="rs" rows="5" maxlength="2000" placeholder="Diisi automatik selepas anda menjana skrip. Anda boleh mengeditnya."></textarea></label>
+<label>Topik video cadangan<input id="r1" maxlength="160"></label>
+<label>Satu perkara yang akan dibuat secara berbeza<input id="r2" maxlength="200"></label>
+<label>Satu soalan yang masih belum terjawab<input id="r3" maxlength="200"></label>
+<div class="acts"><button class="btn" id="rsend">Hantar rekod</button><span class="note" id="rmsg"></span></div>
+</div>
+</section>
+
+<section id="sunting">
+<h2>Panduan menyunting video</h2>
+<p class="sub">Pilih aplikasi yang anda selesa. Kedua-duanya boleh menghasilkan video menegak 9:16.</p>
+<div class="seg" id="seg"></div>
+<div class="card" style="padding:18px 22px"><ol class="gl" id="gl"></ol><p class="note" id="gnote" style="margin-bottom:0">Nama menu boleh berbeza mengikut versi dan akaun. Jika tidak jumpa, cari ikon Teks atau Kapsyen.</p></div>
+</section>
+
+<section id="galeri">
+<h2>Galeri peserta</h2>
+<p class="sub">Kongsi pautan video yang telah anda hasilkan. Semua peserta boleh menonton video rakan.</p>
+<div class="card studio" id="gform">
+<div class="row"><label>Nama<input id="gn" maxlength="40"></label><label>Tajuk video<input id="gt" maxlength="80"></label></div>
+<label>Pautan video (https://…)<input id="gu" type="url" maxlength="300" placeholder="https://"></label>
+<div class="acts"><button class="btn" id="gs">Kongsi ke galeri</button><span class="note" id="gmsg"></span></div>
+</div>
+<p class="note" id="gstat">Menyambung ke galeri…</p>
+<div class="gal" id="gal"></div>
+</section>
+
+<section id="semakan">
+<h2>Semakan kualiti video</h2>
+<p class="sub">Tanda kriteria yang dipenuhi oleh video anda.</p>
+<div class="score"><div class="ring" id="ring"><span id="rn">0/8</span></div><div class="note">Sasaran: semua kriteria dipenuhi sebelum anda menerbitkan.</div></div>
+<div class="qc" id="qc"></div>
+</section>
+
+<section>
+<h2>Pelan B</h2>
+<div class="card" style="padding:16px 20px"><ul style="margin:0;padding-left:18px;color:var(--mut)">
+<li>Wi-Fi lemah: gunakan skrip contoh dan rakaman skrin daripada fasilitator.</li>
+<li>Tiada akaun berfungsi: bekerja berpasangan dengan satu akaun.</li>
+<li>Masa suntingan tidak cukup: guna templat CapCut atau eksport tanpa grafik dahulu.</li>
+<li>Tidak selesa depan kamera: rakam suara dan guna slaid sebagai visual.</li></ul></div>
+</section>
+<footer>Jangan masukkan data peribadi murid atau peserta kursus. Nyatakan jika video dibantu AI. <a href="#fasilitator">Fasilitator</a></footer>
+</main>
+<main id="adm">
+<section style="margin-top:48px">
+<h2>Pangkalan data fasilitator</h2>
+<p class="sub">Masukkan kata laluan dan tekan Buka. Selepas itu jadual semua peserta dan butang Muat turun CSV akan muncul di sini.</p>
+<div class="card studio" id="lock"><label>Kata laluan<input type="password" id="pw" autocomplete="off"></label><div class="acts"><button class="btn" id="pwb">Buka</button><span class="note" id="pwm"></span></div></div>
+<div class="card studio" id="admin" style="display:none">
+<div class="acts" style="justify-content:space-between;align-items:center"><span class="note" id="acount"></span><span class="acts"><button class="btn g" id="lk">Kunci semula</button><button class="btn" id="adl">Muat turun CSV</button></span></div>
+<p class="note" id="amsg"></p>
+<div class="tw"><table><thead><tr><th>Nama</th><th>Tajuk video</th><th>Pautan</th><th>Topik cadangan</th><th>Skrip</th><th>Perubahan</th><th>Soalan</th><th>Skor</th></tr></thead><tbody id="atb"></tbody></table></div>
+</div>
+<p><a href="#jadual" class="note">Kembali ke halaman bengkel</a></p>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const load=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(e){return {}}};
+const keep=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const copy=async t=>{try{await navigator.clipboard.writeText(t);return true}catch(e){try{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();const ok=document.execCommand("copy");a.remove();return ok}catch(_){return false}}};
+
+const SLOTS=[
+["8.00–8.20","Pengenalan dan matlamat","Ceramah","Pilih topik dan sasaran. Tentukan satu mesej utama untuk video anda."],
+["8.20–8.50","Aliran kerja video dengan Claude","Demo","Lihat lima langkah kerja, serta apa yang Claude boleh dan tidak boleh lakukan."],
+["8.50–9.30","Aktiviti 1: Skrip 60 saat","Hands-on","Jalankan Arahan 1, baca kuat-kuat, semak dengan Arahan 3, kemudian uji dengan rakan."],
+["9.30–9.45","Rehat","","Rehat 15 minit."],
+["9.45–10.25","Aktiviti 2: Papan cerita, kapsyen, grafik","Hands-on","Jalankan Arahan 2. Semak jadual babak dan sediakan dua atau tiga kad grafik."],
+["10.25–11.15","Aktiviti 3: Rakam dan sunting","Hands-on","Rakam 15 minit, sunting 30 minit (kapsyen dan grafik), eksport 9:16 dalam 5 minit."],
+["11.15–11.40","Aktiviti 4: Galeri dan maklum balas","Berpasangan","Tonton dua video rakan. Jawab: apa mesej utamanya, apa paling jelas, apa satu penambahbaikan."],
+["11.40–12.00","Refleksi dan tindakan","Perbincangan","Tulis satu topik untuk minggu depan, satu perkara yang akan dibuat secara berbeza, dan satu soalan."]];
+const STEPS=[
+["1","Tentukan sasaran dan mesej","Siapa menonton? Apa satu perkara yang mesti diingat?","Anda"],
+["2","Tulis skrip","Hook 3 saat, tiga perkara utama, satu tindakan penutup.","Claude"],
+["3","Papan cerita dan kapsyen","Jadual babak, teks skrin, cadangan grafik dan fail kapsyen.","Claude"],
+["4","Rakam dan sunting","Rakam menegak, gabungkan klip, kapsyen dan grafik.","Anda"],
+["5","Semak dan terbit","Periksa fakta, bahasa dan hak cipta sebelum berkongsi.","Anda + Claude"]];
+const QC=[["Mesej","Satu mesej utama yang boleh disebut semula dalam satu ayat"],["Hook","Tiga saat pertama menyebut masalah atau soalan penonton"],["Kapsyen","Ada pada seluruh video, pendek, ejaan betul"],["Kebolehcapaian","Kontras tinggi, fon besar, suara jelas"],["Ketepatan","Fakta dan istilah disemak dengan sumber rasmi"],["Hak cipta","Muzik dan gambar mempunyai kebenaran"],["Pendedahan AI","Bahagian yang dibantu Claude boleh dinyatakan"],["Data peribadi","Tiada nama, wajah atau data murid tanpa kebenaran"]];
+
+// Jadual
+const done=load("bv-done");
+function paint(){const n=SLOTS.filter((s,i)=>done[i]).length;$("#pbar").style.width=(n/SLOTS.length*100)+"%"}
+SLOTS.forEach((s,i)=>{
+  const w=el("div","card slot"),h=el("button","sh");h.type="button";
+  h.append(el("span","time",s[0]),el("span","st",s[1]));
+  if(s[2])h.append(el("span","pill",s[2]));
+  const c=el("input","chk");c.type="checkbox";c.checked=!!done[i];c.setAttribute("aria-label","Selesai: "+s[1]);
+  c.onclick=e=>{e.stopPropagation();done[i]=c.checked;w.classList.toggle("done",c.checked);keep("bv-done",done);paint()};
+  h.append(c);w.classList.toggle("done",c.checked);
+  h.onclick=()=>w.classList.toggle("open");
+  w.append(h,el("div","sb",s[3]));$("#slots").append(w);
+});paint();
+
+// Aliran
+STEPS.forEach(s=>{const d=el("div","card step");d.append(el("em","",s[0]),el("h3","",s[1]),el("small","",s[2]),el("div","who",s[3]));$("#steps").append(d)});
+
+// Arahan disegerakkan dengan skrip
+const T1="Saya pensyarah di IAB. Tulis skrip video menegak 50 saat dalam Bahasa Melayu untuk [SASARAN], tentang [TOPIK].\nStruktur: hook 3 saat, tiga perkara utama, satu tindakan penutup.\nNada: mesra dan profesional, ayat pendek (maksimum 15 patah perkataan).\nBeri anggaran masa bagi setiap bahagian.\nJangan reka statistik atau rujukan. Tandakan mana-mana fakta yang perlu saya semak.";
+const T2="Daripada skrip akhir di bawah, hasilkan jadual babak dengan lajur: masa, apa yang saya sebut, teks kapsyen (maksimum 6 patah perkataan), dan satu cadangan grafik ringkas.\nSeterusnya berikan kapsyen dalam format .srt dengan masa yang sepadan dengan jadual.";
+const T3="Semak skrip di bawah seperti penilai yang tegas. Nyatakan dakwaan yang boleh salah atau terlalu umum, bahasa yang kabur, dan bahagian yang tidak sesuai untuk [SASARAN].\nCadangkan penambahbaikan tanpa mengubah mesej utama.";
+const PH="Jana skrip di atas dahulu. Kandungan ini akan disegerakkan dengan skrip anda.";
+let SK="";
+async function ask(prompt,out){
+  const s=await claude.use("sample");
+  if(!s)throw {code:"none"};
+  return s(prompt,{modelTier:"quick",cache:false,onText:({text})=>{out.textContent=text}});
+}
+function errMsg(e){return e&&e.code==="not_granted"?"Kebenaran ditolak. Muat semula halaman dan benarkan Claude untuk menggunakan ciri ini.":e&&e.code==="rate_limited"?"Terlalu banyak permintaan. Cuba lagi sebentar lagi.":e&&e.code==="none"?"Ciri Claude tidak tersedia dalam paparan ini. Salin arahan ke chat Claude.":"Tidak dapat menghubungi Claude. Cuba lagi."}
+const btn=(t,f,g)=>{const b=el("button","btn"+(g?" g":""),t);b.type="button";b.onclick=f;return b};
+const cpb=(label,get)=>{const b=btn(label,async()=>{b.textContent=(await copy(get()))?"Disalin":"Gagal menyalin";setTimeout(()=>b.textContent=label,1500)},true);return b};
+function panel(title){const d=el("details","card"),pre=el("pre","",PH),bar=el("div","acts");d.append(el("summary","",title),pre,bar);$("#prompts").append(d);return {d,pre,bar}}
+const sasaran=()=>$("#sasaran").value.trim()||"penonton sasaran";
+const prm2=()=>T2+"\n\nSkrip:\n"+SK;
+const prm3=()=>T3.replace("[SASARAN]",sasaran())+"\n\nSkrip:\n"+SK;
+const P1=panel("Arahan 1: Skrip"),P2=panel("Arahan 2: Papan cerita dan kapsyen"),P3=panel("Arahan 3: Semakan kritis");
+const O2=el("div","out"),O3=el("div","out");O2.dataset.ph="Hasil akan muncul di sini.";O3.dataset.ph="Hasil akan muncul di sini.";
+async function run(prompt,out,b){b.disabled=true;out.textContent="Memproses…";try{await ask(prompt,out)}catch(e){out.textContent=errMsg(e)}b.disabled=!SK}
+const R2=btn("Jalankan dengan Claude",()=>run(prm2(),O2,R2)),R3=btn("Jalankan dengan Claude",()=>run(prm3(),O3,R3));
+P1.bar.append(cpb("Salin skrip",()=>SK));
+P2.bar.append(cpb("Salin arahan",prm2),R2);P2.d.append(O2);
+P3.bar.append(cpb("Salin arahan",prm3),R3);P3.d.append(O3);
+function sync(){P1.pre.textContent=SK||PH;P2.pre.textContent=SK?prm2():PH;P3.pre.textContent=SK?prm3():PH;R2.disabled=R3.disabled=!SK}
+sync();
+$("#sasaran").addEventListener("input",()=>{if(SK)sync()});
+let lastFill="";
+function fillRec(){const r=$("#rs");if(!r.value||r.value===lastFill){r.value=SK;lastFill=SK}}
+$("#gen").onclick=async()=>{
+  const sa=$("#sasaran").value.trim(),tp=$("#topik").value.trim(),st=$("#gst");
+  if(!sa||!tp){st.textContent="Isi sasaran dan topik dahulu.";return}
+  $("#gen").disabled=true;st.textContent="Menjana skrip…";P1.d.open=true;
+  const o={set textContent(v){SK=v;P1.pre.textContent=v}};
+  try{await ask(T1.replace("[SASARAN]",sa).replace("[TOPIK]",tp),o);sync();fillRec();st.textContent="Skrip dimasukkan ke Arahan 1. Arahan 2 dan 3 sudah diselaraskan.";P1.d.scrollIntoView({behavior:"smooth",block:"nearest"})}
+  catch(e){
+    SK="";sync();
+    if(e&&e.code==="none"){
+      const ok=await copy(T1.replace("[SASARAN]",sa).replace("[TOPIK]",tp));
+      st.textContent=(ok?"Arahan 1 telah disalin. ":"Salin Arahan 1 secara manual. ")+"Tampal ke claude.ai, kemudian tampal skrip yang dijana di kotak di bawah.";
+      $("#manual").style.display="grid";
+    }else st.textContent=errMsg(e);
+  }
+  $("#gen").disabled=false;
+};
+$("#usepaste").onclick=()=>{
+  const v=$("#paste").value.trim(),st=$("#gst");
+  if(!v){st.textContent="Tampal skrip dahulu.";return}
+  SK=v;sync();fillRec();P1.d.open=true;
+  st.textContent="Skrip dimasukkan ke Arahan 1. Arahan 2 dan 3 sudah diselaraskan.";
+};
+
+// Semakan
+const qs=load("bv-qc");
+function score(){const n=QC.filter((q,i)=>qs[i]).length;$("#ring").style.setProperty("--p",n/QC.length*100);$("#rn").textContent=n+"/"+QC.length}
+QC.forEach((q,i)=>{
+  const l=el("label","card qi"),c=el("input","chk");c.type="checkbox";c.checked=!!qs[i];
+  c.onchange=()=>{qs[i]=c.checked;keep("bv-qc",qs);score()};
+  const t=el("div");t.append(el("b","",q[0]),el("span","",q[1]));l.append(c,t);$("#qc").append(l);
+});score();
+
+// Panduan sunting
+const GUIDE={
+CapCut:["Buka CapCut dan pilih Projek baharu. Import klip rakaman menegak anda.","Potong jeda, ambilan yang salah dan bahagian yang tidak perlu pada garis masa.","Tambah kapsyen: pilih Teks, kemudian kapsyen automatik, dan pilih bahasa yang sesuai. Semak ejaan dan istilah satu persatu. Jika versi anda menyokong import fail .srt, gunakan kapsyen daripada Arahan 2.","Letakkan teks atau kad grafik pada masa yang dirancang dalam papan cerita.","Pastikan nisbah 9:16, kemudian eksport (1080p disyorkan) dan simpan."],
+Canva:["Buka Canva, cipta reka bentuk Video, dan pilih saiz menegak 9:16 (contohnya Video TikTok atau Reel Instagram).","Muat naik klip anda dan seret ke garis masa. Potong bahagian awal, akhir dan jeda yang tidak perlu.","Tambah kapsyen: jika ciri kapsyen automatik ada dalam akaun anda, gunakan. Jika tidak, taip kapsyen pendek dalam kotak teks mengikut jadual Arahan 2.","Tambah kad grafik daripada elemen atau templat Canva. Kekalkan satu gaya warna dan fon.","Pilih Kongsi, kemudian Muat turun, pilih format MP4, dan simpan."]};
+function showGuide(k){
+  keep("bv-app",{k});
+  $("#seg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.textContent===k));
+  const ol=$("#gl");ol.replaceChildren();GUIDE[k].forEach(t=>ol.append(el("li","",t)));
+}
+Object.keys(GUIDE).forEach(k=>$("#seg").append(btn(k,()=>showGuide(k),true)));
+showGuide(load("bv-app").k||"CapCut");
+
+// Pautan sah
+const okUrl=u=>{try{return /^https?:$/.test(new URL(u).protocol)}catch(e){return false}};
+
+// Rekod peserta
+(async()=>{
+  let db=null,u=null,uid=null;
+  try{db=await claude.use("db");u=await claude.use("user");uid=u?await u.id():null}catch(e){}
+  if(!db||!uid){$("#rform").style.display="none";$("#rsub").textContent="Rekod tidak tersedia. Log masuk untuk menghantar.";return}
+  $("#rsend").onclick=async()=>{
+    const m=$("#rmsg"),rs=$("#rs");
+    const v={name:$("#rname").value.trim(),script:rs.value.trim(),next:$("#r1").value.trim(),change:$("#r2").value.trim(),question:$("#r3").value.trim(),score:QC.filter((q,i)=>qs[i]).length,ts:Date.now()};
+    if(!v.name||!v.script){m.textContent="Isi nama dan skrip akhir.";return}
+    try{await db.collection("records").doc(uid).set(v);m.textContent="Rekod dihantar. Hantar semula untuk mengemas kini."}
+    catch(e){m.textContent=e&&e.code==="not_granted"?"Anda tidak mempunyai kebenaran menghantar.":"Gagal menghantar. Cuba lagi."}
+  };
+})();
+
+// Galeri video
+(async()=>{
+  const stat=$("#gstat");let db=null,uid=null;
+  const off="Galeri tidak tersedia. Log masuk untuk berkongsi dan menonton video rakan.";
+  const timer=setTimeout(()=>{if(!db)stat.textContent=off},10000);
+  try{db=await claude.use("db");const u=await claude.use("user");uid=u?await u.id():null}catch(e){db=null}
+  clearTimeout(timer);
+  if(!db||!uid){$("#gform").style.display="none";stat.textContent=off;return}
+  const col=db.collection("board"),none="Belum ada video. Jadilah yang pertama.";
+  stat.textContent=none;
+  col.limit(100).onSnapshot(snap=>{
+    const rows=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    const g=$("#gal");g.replaceChildren();
+    stat.textContent=rows.length?rows.length+" video dikongsi":none;
+    rows.forEach(r=>{const c=el("div","card g1");c.append(el("h4","",r.name||"Peserta"),el("small","",r.topic||""));
+      if(r.url&&okUrl(r.url)){const a=el("a","lnk","Tonton video");a.href=r.url;a.target="_blank";a.rel="noopener noreferrer";c.append(a)}
+      g.append(c)});
+    const mine=rows.find(r=>r.id===uid);
+    if(mine&&!$("#gn").value){$("#gn").value=mine.name||"";$("#gt").value=mine.topic||"";$("#gu").value=mine.url||""}
+  },e=>{stat.textContent="Tidak dapat memuatkan galeri sekarang."});
+  $("#gs").onclick=async()=>{
+    const v={name:$("#gn").value.trim(),topic:$("#gt").value.trim(),url:$("#gu").value.trim(),ts:Date.now()},m=$("#gmsg");
+    if(!v.name||!v.url){m.textContent="Isi nama dan pautan video.";return}
+    if(!okUrl(v.url)){m.textContent="Masukkan pautan yang sah, bermula dengan https://";return}
+    try{await col.doc(uid).set(v);m.textContent="Dikongsi. Anda boleh kemas kini bila-bila masa."}
+    catch(e){m.textContent=e&&e.code==="not_granted"?"Anda tidak mempunyai kebenaran menulis.":"Gagal berkongsi. Cuba lagi."}
+  };
+})();
+
+// Paparan fasilitator (kata laluan + kebenaran Editor)
+const view=()=>{const on=location.hash==="#fasilitator";document.body.classList.toggle("adm",on);if(on)scrollTo(0,0)};
+addEventListener("hashchange",view);view();
+(function(){
+  const PWH="fed790bcaf74e2c4085c9ded409d84ad14406ed21263f04273134dfb28c8b32a";
+  const sha=async t=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))].map(x=>x.toString(16).padStart(2,"0")).join("");
+  let rec={},brd={},rows=[];
+  const cols=[["name","Nama"],["topic","Tajuk video"],["url","Pautan video"],["next","Topik cadangan"],["script","Skrip"],["change","Perubahan"],["question","Soalan"],["score","Skor semakan (daripada 8)"],["ts","Masa"]];
+  function draw(){
+    const ids=[...new Set([...Object.keys(rec),...Object.keys(brd)])];
+    rows=ids.map(id=>{const r=rec[id]||{},b=brd[id]||{};return {name:r.name||b.name,topic:b.topic,url:b.url,next:r.next,script:r.script,change:r.change,question:r.question,score:r.score,ts:Math.max(r.ts||0,b.ts||0)}}).sort((a,b)=>a.ts-b.ts);
+    $("#acount").textContent=rows.length?rows.length+" peserta":"Belum ada rekod peserta.";
+    const tb=$("#atb");tb.replaceChildren();
+    rows.forEach(r=>{const tr=document.createElement("tr");
+      [r.name,r.topic,r.url,r.next,r.script,r.change,r.question,r.score].forEach((x,i)=>{
+        const td=el("td",i===4?"w":"");
+        if(i===2&&x&&okUrl(x)){const a=el("a","lnk","Buka");a.style.marginTop="0";a.href=x;a.target="_blank";a.rel="noopener noreferrer";td.append(a)}
+        else td.textContent=x==null?"":(i===4&&String(x).length>160?String(x).slice(0,160)+"…":String(x));
+        tr.append(td)});
+      tb.append(tr)});
+  }
+  async function open(){
+    $("#lock").style.display="none";$("#admin").style.display="grid";$("#pw").value="";
+    const m=$("#amsg");
+    if(window.__LOCAL)m.textContent="Mod tempatan: hanya data pada peranti ini yang dipaparkan.";
+    let db=null,ok=false;
+    try{db=await claude.use("db");const u=await claude.use("user");ok=u?await u.canEdit():false}catch(e){}
+    if(!db||!ok){m.textContent="Akaun anda tidak mempunyai kebenaran fasilitator, jadi data tidak dapat dibaca.";return}
+    const bad=()=>{$("#acount").textContent="Tidak dapat memuatkan data."};
+    db.collection("records").limit(500).onSnapshot(s=>{rec={};s.docs.forEach(d=>rec[d.id]=d.data());draw()},bad);
+    db.collection("board").limit(500).onSnapshot(s=>{brd={};s.docs.forEach(d=>brd[d.id]=d.data());draw()},bad);
+  }
+  async function tryPw(){
+    const m=$("#pwm");
+    try{if(await sha($("#pw").value)!==PWH){m.textContent="Kata laluan salah.";return}}catch(e){m.textContent="Pelayar ini tidak menyokong pengesahan.";return}
+    open();
+  }
+  $("#pwb").onclick=tryPw;$("#lk").onclick=()=>{$("#admin").style.display="none";$("#lock").style.display="grid"};$("#pw").addEventListener("keydown",e=>{if(e.key==="Enter")tryPw()});
+  const q=x=>'"'+String(x==null?"":x).replace(/"/g,'""')+'"';
+  $("#adl").onclick=async()=>{
+    const m=$("#amsg");const d=await claude.use("downloads");
+    if(!d){m.textContent="Muat turun tidak tersedia dalam paparan ini.";return}
+    const csv="\uFEFF"+cols.map(c=>q(c[1])).join(",")+"\n"+rows.map(r=>cols.map(c=>q(c[0]==="ts"&&r.ts?new Date(r.ts).toLocaleString("ms-MY"):r[c[0]])).join(",")).join("\n");
+    try{await d.save({filename:"data-peserta.csv",data:csv});m.textContent="Fail CSV sedia."}
+    catch(e){m.textContent=e&&e.code==="declined"?"Muat turun dibatalkan.":"Gagal memuat turun. Cuba lagi."}
+  };
+})();
+</script>
+</body>
+</html>
